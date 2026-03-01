@@ -1,10 +1,10 @@
-class Thing {
-    getCallback() {
-        fun localFunction() {
-            print this;
-        }
-        return localFunction;
+class Circle {
+    init(radius) {
+        this.radius = radius;
     }
 }
-var callback = Thing().getCallback();
-callback();
+var circle = Circle(4);
+print circle.radius;
+circle.radius = 10;
+print circle.radius;
+

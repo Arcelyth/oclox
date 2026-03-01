@@ -58,7 +58,11 @@ let rec resolve_stmt state stmt =
         err keyword.line "Can't return from top-level code." state;
       (match e with
       | Literal Nil -> ()
-      | _ -> resolve_expr state e)
+      | _ -> 
+          if state.cur_func = TypeInit then
+           err keyword.line "Can't return a value from an initializer." state;
+          resolve_expr state e;
+          resolve_expr state e)
   | WhileStmt (e, body, incr) -> 
       resolve_expr state e;
       resolve_stmt state body;
@@ -74,9 +78,10 @@ let rec resolve_stmt state stmt =
       define "this" state.scopes;
       List.iter (fun m -> 
         match m with
-        | FuncStmt (_, params, body) ->
+        | FuncStmt (m_name, params, body) ->
             let enclosing_func = state.cur_func in
-            state.cur_func <- TypeMethod; 
+            let is_init = m_name.lexeme = "init" in
+            state.cur_func <- if is_init then TypeInit else TypeMethod;
             begin_scope state.scopes;
             List.iter (fun p -> declare p state; define p.lexeme state.scopes) params;
             resolve_stmts body state;

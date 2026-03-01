@@ -86,6 +86,7 @@ and func_type =
   | TypeFunc
   | TypeNone
   | TypeMethod
+  | TypeInit
 
 and class_type = 
   | TyClassNone
@@ -118,7 +119,7 @@ and env = {
 }
 
 and callable = 
-  | SmcFunc of stmt * env  
+  | SmcFunc of stmt * env * bool (* bool: is init() *)
   | Native of int * (state -> value list -> value)
 
 let report line where message state = 

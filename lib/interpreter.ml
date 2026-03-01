@@ -89,13 +89,13 @@ let class_find_method klass name =
   Hashtbl.find_opt klass.methods name
 
 let bind_method instance = function
-  | SmcFunc (FuncStmt (name, params, body), closure) ->
+  | SmcFunc (FuncStmt (name, params, body), closure, is_init) ->
       let bound_env = { 
         values = Hashtbl.create 1; 
         enclosing = Some closure 
       } in
       env_define bound_env "this" (VInst instance);
-      VCallable (SmcFunc (FuncStmt (name, params, body), bound_env))
+      VCallable (SmcFunc (FuncStmt (name, params, body), bound_env, is_init))
   | _ -> failwith "Only functions can be bound."
 
 let instance_get instance name =
@@ -177,14 +177,15 @@ let rec execute (state : state) = function
       raise ContinueException
   | FuncStmt (name, _, _) as stmt ->
       let closure = state.cur_env in 
-      let func_value = VCallable (SmcFunc (stmt, closure)) in
+      let func_value = VCallable (SmcFunc (stmt, closure, false)) in
       ignore (env_define state.cur_env name.lexeme func_value)  
   | Class (name, methods) -> 
       let method_map = Hashtbl.create (List.length methods) in
       List.iter (fun m -> 
         match m with
         | FuncStmt (m_name, _, _) -> 
-            Hashtbl.add method_map m_name.lexeme (SmcFunc (m, state.cur_env))
+            let is_init = (m_name.lexeme = "init") in
+            Hashtbl.add method_map m_name.lexeme (SmcFunc (m, state.cur_env, is_init))
         | _ -> ()
       ) methods;
       let smc_klass = { class_name = name.lexeme; methods = method_map } in
@@ -209,17 +210,19 @@ and call_val state tk args_values = function
       if List.length args_values <> arity then 
         raise (RuntimeError (tk, sprintf "Expected %d arguments but got %d." arity (List.length args_values)))
       else f state args_values
-  | SmcFunc (FuncStmt (_, params, body), closure) ->
+
+  | SmcFunc (FuncStmt (_, params, body), closure, is_init) ->
       let arity = List.length params in
       if List.length args_values <> arity then
         raise (RuntimeError (tk, sprintf "Expected %d arguments but got %d." arity (List.length args_values)))
       else
-        (let env = { values = Hashtbl.create arity; enclosing = Some closure } in
+        let env = { values = Hashtbl.create arity; enclosing = Some closure } in
         List.iter2 (fun p v -> Hashtbl.replace env.values p.lexeme v) params args_values;
-        try 
+        (try 
           execute_block body env state; 
-          VNil 
-        with ReturnException v -> v)
+          if is_init then env_get closure "this" tk else VNil 
+        with ReturnException v -> 
+          if is_init then env_get closure "this" tk else v)
   | _ -> raise (RuntimeError (tk, "Can only call functions and classes."))
 
 and evaluate_expr expr state = match expr with
@@ -276,14 +279,25 @@ and evaluate_expr expr state = match expr with
   | Grouping e -> 
       evaluate_expr e state
 
+
   | Call (e, tk, args_exprs) -> 
       let callee_value = evaluate_expr e state in
       let args_values = List.map (fun arg -> evaluate_expr arg state) args_exprs in
       (match callee_value with
-      | VCallable c -> 
-          call_val state tk args_values c 
       | VClass klass -> 
-          VInst { klass = klass; fields = Hashtbl.create 8 }
+          let instance = { klass = klass; fields = Hashtbl.create 8 } in
+          (match class_find_method klass "init" with
+          | Some (SmcFunc _ as init_method) -> 
+              let bound_init = bind_method instance init_method in
+              (match bound_init with
+               | VCallable c -> ignore (call_val state tk args_values c)
+               | _ -> ());
+              VInst instance 
+          | _ -> 
+              if List.length args_values <> 0 then
+                raise (RuntimeError (tk, "Expected 0 arguments."))
+              else VInst instance)
+      | VCallable c -> call_val state tk args_values c
       | _ -> raise (RuntimeError (tk, "Can only call functions and classes.")))
 
   | Get (e, tk) -> 
