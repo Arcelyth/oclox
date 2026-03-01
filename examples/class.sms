@@ -8,3 +8,12 @@ print circle.radius;
 circle.radius = 10;
 print circle.radius;
 
+
+class Doughnut {
+    cook() {
+        print "Fry until golden brown.";
+    }
+}
+// Inheritance
+class BostonCream : Doughnut {}
+BostonCream().cook();

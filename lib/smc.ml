@@ -11,6 +11,7 @@ type token_type =
   | Minus        (* - *)
   | Plus         (* + *)
   | Semicolon    (* ; *)
+  | Colon        (* : *)
   | Slash        (* / *)
   | Star         (* * *)
 
@@ -67,8 +68,9 @@ type stmt =
   | WhileStmt of expr * stmt * stmt option
   | FuncStmt of token * token list * stmt list
   | ReturnStmt of token * expr
+  (* name, superclass, methods*)
   (* need to ensure all the stmt are FuncStmt *)
-  | Class of token * stmt list
+  | Class of token * expr option * stmt list
   | BreakStmt
   | ContinueStmt
 
@@ -94,6 +96,7 @@ and class_type =
 
 and smc_class = {
   class_name : string;
+  superclass : smc_class option;
   methods : (string, callable) Hashtbl.t;
 }
 

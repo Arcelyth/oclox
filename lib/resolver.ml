@@ -69,11 +69,19 @@ let rec resolve_stmt state stmt =
       (match incr with 
       | Some e2 -> resolve_stmt state e2
       | None -> ())
-  | Class (name, methods) -> 
+  | Class (name, superclass, methods) -> 
       let enclosing_class = state.cur_class in
       state.cur_class <- TyClass;
       declare name state;
       define name.lexeme state.scopes;
+
+      (match superclass with
+      | Some (Variable super_tk) ->
+          if name.lexeme = super_tk.lexeme then
+            err super_tk.line "A class can't inherit from itself." state;
+          resolve_expr state (Variable super_tk)
+      | _ -> ());
+      
       begin_scope state.scopes;
       define "this" state.scopes;
       List.iter (fun m -> 

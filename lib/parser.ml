@@ -73,22 +73,28 @@ and func_declaration kind = function
   | t :: _ -> raise (ParseError (t, sprintf "Expect %s name." kind))
   | [] -> failwith "Unexpected EOF"
 
-and class_declaration = function 
-  | {kind=Identifier _; _} as tk :: rest -> 
-      let rest = consume rest Left_brace "Expect '{' before class body." in
-      
-      let rec loop acc = function
-        | {kind=Right_brace; _} :: _ as rest2 -> List.rev acc, rest2
-        | {kind=EOF; _} :: _ | [] -> 
-            raise (ParseError (tk, "Expect '}' after class body."))
-        | rest2 -> 
-            let method_stmt, rest3 = func_declaration "method" rest2 in
-            loop (method_stmt :: acc) rest3
-      in 
-      
-      let methods, rest_after_loop = loop [] rest in
-      let rest_final = consume rest_after_loop Right_brace "Expect '}' after class body." in
-      Class (tk, methods), rest_final
+and class_declaration tokens = 
+  match tokens with
+    | {kind=Identifier _; _} as tk :: rest -> 
+    let superclass, rest_after_super = 
+      match rest with
+      | {kind=Colon; _} :: ({kind=Identifier _; _} as super_ident) :: after_super ->
+          Some (Variable super_ident), after_super
+      | {kind=Colon; _} :: t :: _ -> 
+          raise (ParseError (t, "Expect superclass name."))
+      | _ -> None, rest 
+    in
+    let rest_after_brace = consume rest_after_super Left_brace "Expect '{' before class body." in
+    let rec loop acc = function
+      | {kind=Right_brace; _} :: _ as r -> List.rev acc, r
+      | {kind=EOF; _} :: _ | [] -> raise (ParseError (tk, "Expect '}' after class body."))
+      | r -> 
+          let method_stmt, next_r = func_declaration "method" r in
+          loop (method_stmt :: acc) next_r
+    in 
+    let methods, rest_after_loop = loop [] rest_after_brace in
+    let rest_final = consume rest_after_loop Right_brace "Expect '}' after class body." in
+    Class (tk, superclass, methods), rest_final
 
   | t :: _ -> raise (ParseError (t, "Expect class name."))
   | [] -> failwith "Unexpected EOF"

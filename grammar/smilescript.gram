@@ -5,7 +5,8 @@ declaration     : varDecl
                 | statment ;
 varDecl         : "var" IDENTIFIRE ("=" expression)? ";" ;
 funDecl         : "fun" function ;
-classDecl       : "class" IDENTIFIER "{" function* "}" ;
+classDecl       : "class" IDENTIFIER ( ":" IDENTIFIER )?
+                  "{" function* "}" ;
 statement       : exprStmt 
                 | ifStmt
                 | printStmt

@@ -85,8 +85,14 @@ let native_functions = [
 (* end of define native functions *)
 
 (* class *)
-let class_find_method klass name =
-  Hashtbl.find_opt klass.methods name
+
+let rec class_find_method klass name =
+  match Hashtbl.find_opt klass.methods name with
+  | Some m -> Some m
+  | None -> 
+      match klass.superclass with
+      | Some super -> class_find_method super name
+      | None -> None
 
 let bind_method instance = function
   | SmcFunc (FuncStmt (name, params, body), closure, is_init) ->
@@ -179,7 +185,15 @@ let rec execute (state : state) = function
       let closure = state.cur_env in 
       let func_value = VCallable (SmcFunc (stmt, closure, false)) in
       ignore (env_define state.cur_env name.lexeme func_value)  
-  | Class (name, methods) -> 
+  | Class (name, superclass, methods) -> 
+      let super_val = match superclass with
+        | Some expr -> 
+            let v = evaluate_expr expr state in
+            (match v with
+             | VClass k -> Some k
+             | _ -> raise (RuntimeError (name, "Superclass must be a class.")))
+        | None -> None 
+      in
       let method_map = Hashtbl.create (List.length methods) in
       List.iter (fun m -> 
         match m with
@@ -188,7 +202,11 @@ let rec execute (state : state) = function
             Hashtbl.add method_map m_name.lexeme (SmcFunc (m, state.cur_env, is_init))
         | _ -> ()
       ) methods;
-      let smc_klass = { class_name = name.lexeme; methods = method_map } in
+      let smc_klass = { 
+        class_name = name.lexeme; 
+        superclass = super_val;
+        methods = method_map 
+      } in
       let class_val = VClass smc_klass in
       ignore (env_define state.cur_env name.lexeme class_val)
   | ReturnStmt (_, e) -> 
@@ -278,7 +296,6 @@ and evaluate_expr expr state = match expr with
       v
   | Grouping e -> 
       evaluate_expr e state
-
 
   | Call (e, tk, args_exprs) -> 
       let callee_value = evaluate_expr e state in
