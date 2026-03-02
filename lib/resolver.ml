@@ -79,9 +79,12 @@ let rec resolve_stmt state stmt =
       | Some (Variable super_tk) ->
           if name.lexeme = super_tk.lexeme then
             err super_tk.line "A class can't inherit from itself." state;
-          resolve_expr state (Variable super_tk)
+          state.cur_class <- TySubClass;
+          resolve_expr state (Variable super_tk);
+          begin_scope state.scopes;
+          define "super" state.scopes
       | _ -> ());
-      
+
       begin_scope state.scopes;
       define "this" state.scopes;
       List.iter (fun m -> 
@@ -98,6 +101,10 @@ let rec resolve_stmt state stmt =
         | _ -> ()
       ) methods;
       end_scope state.scopes;
+      (match superclass with 
+      | Some (Variable _) ->
+          end_scope state.scopes
+      | _ -> ());
       state.cur_class <- enclosing_class
   | _ -> ()
 
@@ -134,6 +141,14 @@ and resolve_expr state expr =
       | TyClassNone -> 
           err t.line "Can't read local variable in its own initializer." state
       | _ -> resolve_local state expr t)
+  | SuperExpr (keyw, _) -> 
+      (match state.cur_class with 
+      | TyClassNone -> 
+          err keyw.line "Can't use 'super' outside of a class." state
+      | TyClass -> 
+          err keyw.line "Can't use 'super' in a class with no superclass." state
+      | TySubClass -> resolve_local state expr keyw)
+      
   | Binary (left, _, right) ->
       resolve_expr state left;
       resolve_expr state right

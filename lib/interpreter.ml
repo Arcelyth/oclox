@@ -185,21 +185,28 @@ let rec execute (state : state) = function
       let closure = state.cur_env in 
       let func_value = VCallable (SmcFunc (stmt, closure, false)) in
       ignore (env_define state.cur_env name.lexeme func_value)  
+
   | Class (name, superclass, methods) -> 
-      let super_val = match superclass with
+      let (super_val, env_with_super) = match superclass with
         | Some expr -> 
             let v = evaluate_expr expr state in
             (match v with
-             | VClass k -> Some k
+             | VClass k -> 
+                 let extended_env = { 
+                   values = Hashtbl.create 1; 
+                   enclosing = Some state.cur_env 
+                 } in
+                 env_define extended_env "super" v;
+                 (Some k, extended_env)
              | _ -> raise (RuntimeError (name, "Superclass must be a class.")))
-        | None -> None 
+        | None -> (None, state.cur_env) 
       in
       let method_map = Hashtbl.create (List.length methods) in
       List.iter (fun m -> 
         match m with
         | FuncStmt (m_name, _, _) -> 
             let is_init = (m_name.lexeme = "init") in
-            Hashtbl.add method_map m_name.lexeme (SmcFunc (m, state.cur_env, is_init))
+            Hashtbl.add method_map m_name.lexeme (SmcFunc (m, env_with_super, is_init))
         | _ -> ()
       ) methods;
       let smc_klass = { 
@@ -332,6 +339,21 @@ and evaluate_expr expr state = match expr with
       | _ -> raise (RuntimeError (tk, "Only instances have fields.")))
   | ThisExpr tk -> 
       lookup_var tk expr state
+  | SuperExpr (keyw, method_name) as e ->
+      let distance = Hashtbl.find state.locals e in
+      let superclass = match get_at distance "super" state.cur_env keyw with
+        | VClass k -> k
+        | _ -> raise (RuntimeError (keyw, "Internal error: 'super' is not a class."))
+      in
+      let instance = match get_at (distance - 1) "this" state.cur_env keyw with
+        | VInst i -> i
+        | _ -> raise (RuntimeError (keyw, "Internal error: 'this' is not an instance."))
+      in
+      let method_opt = class_find_method superclass method_name.lexeme in
+      (match method_opt with
+       | Some m -> 
+           bind_method instance m
+       | None -> raise (RuntimeError (method_name, "Undefined property on superclass.")))
 
 and is_truthy = function 
   | VNil | VBool false -> false

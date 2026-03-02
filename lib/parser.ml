@@ -342,6 +342,14 @@ and primary tokens =
   | {kind=Nil; _} as t :: rest -> Literal t.kind, rest 
   | {kind=Identifier _; _} as t :: rest -> Variable t, rest
   | {kind=This; _} as t :: rest -> ThisExpr t, rest
+  | {kind=Super; _} as t :: rest -> 
+      let tokens2 = consume rest Dot "Expect '.' after 'super'." in
+      (match tokens2 with 
+      | {kind=Identifier _; _} as m :: rest2-> 
+          SuperExpr (t, m), rest2
+      | t :: _ -> raise (ParseError (t, "Expect superclass method name."))
+      | [] -> failwith "Unexpected EOF")
+
   | {kind=Left_paren; _} as tok :: rest -> 
       let expr, tokens = expression rest in
       (match tokens with 
@@ -390,6 +398,8 @@ let rec print_expr = function
       sprintf "(set %s %s %s)" tk.lexeme (print_expr obj) (print_expr value) 
   | ThisExpr tk -> 
       sprintf "(this %s)" tk.lexeme 
+  | SuperExpr (_, tk) -> 
+      sprintf "(super %s)" tk.lexeme 
 
 and string_of_literal = function 
   | Number n -> 

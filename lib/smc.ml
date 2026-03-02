@@ -58,6 +58,7 @@ type expr =
   | Get of expr * token
   | Set of expr * token * expr 
   | ThisExpr of token
+  | SuperExpr of token * token 
 
 type stmt =
   | PrintStmt of expr
@@ -93,6 +94,7 @@ and func_type =
 and class_type = 
   | TyClassNone
   | TyClass
+  | TySubClass
 
 and smc_class = {
   class_name : string;
