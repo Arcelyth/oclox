@@ -11,7 +11,6 @@ type token_type =
   | Minus        (* - *)
   | Plus         (* + *)
   | Semicolon    (* ; *)
-  | Colon        (* : *)
   | Slash        (* / *)
   | Star         (* * *)
 
@@ -81,8 +80,8 @@ type value =
   | VStr of string
   | VBool of bool
   | VCallable of callable
-  | VClass of smc_class
-  | VInst of smc_instance
+  | VClass of lox_class
+  | VInst of lox_instance
   | VNil
 
 and func_type = 
@@ -96,14 +95,14 @@ and class_type =
   | TyClass
   | TySubClass
 
-and smc_class = {
+and lox_class = {
   class_name : string;
-  superclass : smc_class option;
+  superclass : lox_class option;
   methods : (string, callable) Hashtbl.t;
 }
 
-and smc_instance = {
-  klass : smc_class;
+and lox_instance = {
+  klass : lox_class;
   fields : (string, value) Hashtbl.t;
 }
 
@@ -124,7 +123,7 @@ and env = {
 }
 
 and callable = 
-  | SmcFunc of stmt * env * bool (* bool: is init() *)
+  | LoxFunc of stmt * env * bool (* bool: is init() *)
   | Native of int * (state -> value list -> value)
 
 let report line where message state = 

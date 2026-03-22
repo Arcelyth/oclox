@@ -1,4 +1,4 @@
-open Smc
+open Lox
 
 let begin_scope scopes =
   scopes := Hashtbl.create 8 :: !scopes

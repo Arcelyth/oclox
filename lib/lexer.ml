@@ -1,5 +1,5 @@
 open Printf
-open Smc
+open Lox
 
 exception SyntaxError of string
 
@@ -14,7 +14,6 @@ let string_of_token_type = function
   | Minus -> "MINUS"
   | Plus -> "PLUS"
   | Semicolon -> "SEMICOLON"
-  | Colon -> "COLON"
   | Slash -> "SLASH"
   | Star -> "STAR"
   
@@ -182,7 +181,6 @@ let scan_tokens sc state =
     | '-' -> new_token Minus
     | '+' -> new_token Plus
     | ';' -> new_token Semicolon
-    | ':' -> new_token Colon
     | '*' -> new_token Star
     | '!' -> if expected '=' then new_token Bang_equal else new_token Bang
     | '=' -> if expected '=' then new_token Equal_equal else new_token Equal

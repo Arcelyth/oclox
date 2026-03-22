@@ -1,5 +1,5 @@
 open Printf
-open Smc_lib
+open Oclox_lib
 
 let read_file path = 
   try
@@ -26,7 +26,7 @@ let run line state is_repl =
     try
       let expr, rest = Parser.expression tokens in
       match rest with
-      | [{kind=Smc.EOF; _}] | [] ->
+      | [{kind=Lox.EOF; _}] | [] ->
           let v = Interpreter.evaluate_expr expr state in
           print_endline (Interpreter.string_of_value v)
       | _ -> raise Exit
@@ -63,9 +63,9 @@ let rec run_prompt state =
 
 let () = 
   let args = Sys.argv in
-  let init_env = { Smc.values = Hashtbl.create 32; enclosing = None } in
+  let init_env = { Lox.values = Hashtbl.create 32; enclosing = None } in
   let state = {
-    Smc.had_err = false;
+    Lox.had_err = false;
     had_runtime_err = false;
     cur_env = init_env;
     globals = init_env;
@@ -79,5 +79,5 @@ let () =
   | 1 -> run_prompt state             
   | 2 -> run_file args.(1) state
   | _ ->                           
-      printf "Usage: smc [script]\n";
+      printf "Usage: lox [script]\n";
       exit 64

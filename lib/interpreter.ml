@@ -1,4 +1,4 @@
-open Smc
+open Lox
 open Printf
 
 exception RuntimeError of token * string
@@ -95,13 +95,13 @@ let rec class_find_method klass name =
       | None -> None
 
 let bind_method instance = function
-  | SmcFunc (FuncStmt (name, params, body), closure, is_init) ->
+  | LoxFunc (FuncStmt (name, params, body), closure, is_init) ->
       let bound_env = { 
         values = Hashtbl.create 1; 
         enclosing = Some closure 
       } in
       env_define bound_env "this" (VInst instance);
-      VCallable (SmcFunc (FuncStmt (name, params, body), bound_env, is_init))
+      VCallable (LoxFunc (FuncStmt (name, params, body), bound_env, is_init))
   | _ -> failwith "Only functions can be bound."
 
 let instance_get instance name =
@@ -183,7 +183,7 @@ let rec execute (state : state) = function
       raise ContinueException
   | FuncStmt (name, _, _) as stmt ->
       let closure = state.cur_env in 
-      let func_value = VCallable (SmcFunc (stmt, closure, false)) in
+      let func_value = VCallable (LoxFunc (stmt, closure, false)) in
       ignore (env_define state.cur_env name.lexeme func_value)  
 
   | Class (name, superclass, methods) -> 
@@ -206,15 +206,15 @@ let rec execute (state : state) = function
         match m with
         | FuncStmt (m_name, _, _) -> 
             let is_init = (m_name.lexeme = "init") in
-            Hashtbl.add method_map m_name.lexeme (SmcFunc (m, env_with_super, is_init))
+            Hashtbl.add method_map m_name.lexeme (LoxFunc (m, env_with_super, is_init))
         | _ -> ()
       ) methods;
-      let smc_klass = { 
+      let lox_klass = { 
         class_name = name.lexeme; 
         superclass = super_val;
         methods = method_map 
       } in
-      let class_val = VClass smc_klass in
+      let class_val = VClass lox_klass in
       ignore (env_define state.cur_env name.lexeme class_val)
   | ReturnStmt (_, e) -> 
       let value = evaluate_expr e state in
@@ -236,7 +236,7 @@ and call_val state tk args_values = function
         raise (RuntimeError (tk, sprintf "Expected %d arguments but got %d." arity (List.length args_values)))
       else f state args_values
 
-  | SmcFunc (FuncStmt (_, params, body), closure, is_init) ->
+  | LoxFunc (FuncStmt (_, params, body), closure, is_init) ->
       let arity = List.length params in
       if List.length args_values <> arity then
         raise (RuntimeError (tk, sprintf "Expected %d arguments but got %d." arity (List.length args_values)))
@@ -311,7 +311,7 @@ and evaluate_expr expr state = match expr with
       | VClass klass -> 
           let instance = { klass = klass; fields = Hashtbl.create 8 } in
           (match class_find_method klass "init" with
-          | Some (SmcFunc _ as init_method) -> 
+          | Some (LoxFunc _ as init_method) -> 
               let bound_init = bind_method instance init_method in
               (match bound_init with
                | VCallable c -> ignore (call_val state tk args_values c)

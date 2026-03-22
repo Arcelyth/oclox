@@ -1,4 +1,4 @@
 (executable
- (public_name smilescript)
+ (public_name oclox)
  (name main)
- (libraries smc_lib))
+ (libraries oclox_lib))

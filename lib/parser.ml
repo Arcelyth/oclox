@@ -1,5 +1,5 @@
 open Printf
-open Smc
+open Lox
 
 type program = stmt list
 
@@ -78,9 +78,9 @@ and class_declaration tokens =
     | {kind=Identifier _; _} as tk :: rest -> 
     let superclass, rest_after_super = 
       match rest with
-      | {kind=Colon; _} :: ({kind=Identifier _; _} as super_ident) :: after_super ->
+      | {kind=Less; _} :: ({kind=Identifier _; _} as super_ident) :: after_super ->
           Some (Variable super_ident), after_super
-      | {kind=Colon; _} :: t :: _ -> 
+      | {kind=Less; _} :: t :: _ -> 
           raise (ParseError (t, "Expect superclass name."))
       | _ -> None, rest 
     in

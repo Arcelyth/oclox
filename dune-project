@@ -1,18 +1,18 @@
 (lang dune 3.20)
 
-(name smilescript)
+(name oclox)
 
 (generate_opam_files true)
 
 (source
- (github Arcelyth/smilescript))
+ (github Arcelyth/oclox))
 
 (license LICENSE)
 
 (package
- (name smilescript)
- (synopsis "Smilescript interpreter")
- (description "Smilescript interpreter")
+ (name oclox)
+ (synopsis "oclox interpreter")
+ (description "Lox interpreter written in OCaml")
  (depends ocaml)
  (license "MIT")
  (tags

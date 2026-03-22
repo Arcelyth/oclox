@@ -15,7 +15,7 @@ class Doughnut {
     }
 }
 // Inheritance
-class BostonCream : Doughnut {}
+class BostonCream < Doughnut {}
 BostonCream().cook();
 
 class A {
@@ -23,7 +23,7 @@ class A {
         print "A method";
     }
 }
-class B : A {
+class B < A {
     method() {
         print "B method";
     }
@@ -31,5 +31,5 @@ class B : A {
         super.method();
     }
 }
-class C : B {}
+class C < B {}
 C().test();
